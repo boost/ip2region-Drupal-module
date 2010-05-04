@@ -1,0 +1,8 @@
+;$Id$
+name = "IP 2 Region"
+description = "Match an IP address or range using CIDR, to region"
+core = 6.x
+php = 5.1
+version = "6.x-2.x-dev"
+dependencies[] = taxonomy
+

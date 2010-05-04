@@ -1,0 +1,125 @@
+<?php
+// $Id: ip2region.install,v 1 2009/05/26 Paul Flewelling Exp $
+
+/**
+ * @file
+ * Install file for IP to Region module.
+ */
+
+/**
+* Implementation of hook_install().
+*/
+function ip2region_install() {
+  // Create tables.
+  drupal_install_schema('ip2region');
+} 
+
+/**
+ * Implementation of hook_schema().
+ */ 
+function ip2region_schema() {
+  $schema['ip2region'] = array(
+    'description' => t('ip2region Region/IP data'),
+    'fields' => array(
+  			'uid' => array(
+          'description' => t('Unique Row ID'),
+          'type' => 'serial',
+          'not null' => TRUE,
+        ),
+        'library_name' => array(
+          'description' => t('Library Name'),
+					'type' => 'varchar',
+          'length' => 128,
+          'not null' => TRUE,
+        ),
+        'region' => array(
+          'description' => t('Region code'),
+          'type' => 'int',
+          'not null' => TRUE,
+        ),
+        'ip_from' => array(
+          'description' => t('First IP address'),
+					'type' => 'varchar',
+          'length' => 128,
+          'not null' => TRUE,
+        ),
+        'ip_to' => array(
+          'description' => t('Last IP address (if a range)'),
+					'type' => 'varchar',
+          'length' => 128,
+          'not null' => TRUE,
+        ),
+        /**
+					'cidr' => array(
+          'description' => t('CIDR indicating Range - if any'),
+          'type' => 'char',
+          'length' => 2,
+          'not null' => TRUE,
+        ), 
+         */
+    ),
+    'primary key' => array('uid'),
+  );
+  
+  $schema['ip2region_users'] = array(
+    'description'            => t('ip2region Region/User data'),
+    'fields'                 => array(
+      'iid'                  => array(
+        'description'        => t('Unique Row ID'),
+        'type'               => 'serial',
+        'not null'           => TRUE,
+        ),
+      'uid'                  => array(
+        'description'        => t('User UID'),
+        'type'               => 'int',
+        'not null'           => TRUE,
+      ),
+      'tid'                  => array(
+        'description'        => t('Term ID'),
+        'type'               => 'int',
+        'not null'           => TRUE,
+      ),
+    ),
+    'primary key'            => array('iid'),
+  );
+
+  return $schema;
+}
+
+function ip2region_update_6001() {
+  $schema = array();
+  $schema['ip2region_users'] = array(
+    'description'            => t('ip2region Region/User data'),
+    'fields'                 => array(
+      'iid'                  => array(
+        'description'        => t('Unique Row ID'),
+        'type'               => 'serial',
+        'not null'           => TRUE,
+        ),
+      'uid'                  => array(
+        'description'        => t('User UID'),
+        'type'               => 'int',
+        'not null'           => TRUE,
+      ),
+      'tid'                  => array(
+        'description'        => t('Term ID'),
+        'type'               => 'int',
+        'not null'           => TRUE,
+      ),
+    ),
+    'primary key'            => array('iid'),
+  );
+  
+  $ret = array();
+  db_create_table($ret, 'ip2region_users', $schema['ip2region_users']);
+
+  return $ret;
+}
+
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function ip2region_uninstall() {
+  drupal_uninstall_schema('ip2region');
+}
