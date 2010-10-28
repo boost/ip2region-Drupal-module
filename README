@@ -1,9 +1,161 @@
-(The MIT License)
+IP2Region Installation and Usage
+================================
 
-Copyright © 2009 Boost New Media (www.boost.co.nz)
+INSTALLING
+----------
+1. Download and install the ip2region module into the relevant modules folder.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the ‘Software’), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+For example, if all of your Drupal Sites will use ip2region, place the module \sites\all\modules\ip2region
 
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+If you are only using ip2region for one particular site, place it in the module folder in that site.
 
-THE SOFTWARE IS PROVIDED ‘AS IS’, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+2. In the Drupal admin console navigate to >Administer >Site building >Modules and switch on the ip2region module.
+
+
+3. Next navigate to >Administer >User management >Permissions and give the appropriate permissions to your users.  NOTE:  A standard authenticated or anonymous user should only be able to "view regional content"
+
+
+4. Create a Taxonomy called "Regions", navigate to >Administer >Content Management >Taxonomy and create the list of regions that can be used by the IP2Region module for setting up IP ranges. 
+
+Each entry in the taxonomy is the name of a region, for example:
+
+Name
+=====
+Boost
+Buller
+Central Hawke's Bay
+Gisborne
+Grey
+Hamilton
+Hauraki
+
+If you have already created Content types that you want to make regional, you should select those content types from the list when you are creating the Taxonomy.  If you haven't already created regional content types, you will need create the content type and then come back to this screen and associate the "Regions" taxonomy with the particular content type.
+
+
+5. The ip2region module should now be configured for use, navigate to >Administer >Site configuration >IP to Region
+
+Here you enter the regions and their IP ranges, for example
+
+Library Name      Region               IP From        IP To
+===================================================================
+Hawarden          Hurunui	            172.23.5.0	   172.23.5.255
+Waipawa	         Central Hawke's Bay	172.22.79.0	   172.22.79.255
+Wanganui          Wanganui	            172.21.28.0	   172.21.28.255
+
+Use "Add" to a region IP range.
+
+Use "Test IP Range" to confirm a particular IP range is working.
+
+
+6. The "Regions" Taxonomy is automatically associated with a user and will show as a dropdown list on the user form when you create a user. If you associate a region with the user and the user is logged into Drupal, the region associated with their user profile will take preference over their actual IP address (the function ip2region_get_region_tid() provides this functionality). 
+
+You can also use the region in views. This can be useful, for example, if you have regional users who can only see certain content.  If you set up an administrative view that filters by region, then a user will only be able to edit content associated with their region.
+
+
+
+
+KEY FUNCTIONS PROVIDED
+----------------------
+
+/**
+ * Get id for Regions Taxonomy according to IP address 
+ * (if forced_region or forced_ip, or logged in user's region, will take precedence over machine IP address)
+ */
+function ip2region_get_region_tid()
+
+/**
+ * Get the current user's IP address
+ */
+function ip2region_ip_address()  
+
+This returns the IP Address for the current user, regardless of whether they are authenticated or anonymous.
+
+/**
+ *Get the region associated with a particular IP address
+ */
+function ip2region_get_region_from_ip($users_ip=NULL)
+
+/**
+ * Ensure the specified region is in the Region table
+ */
+function ip2region_get_region_from_region($users_region=NULL)
+
+
+/**
+ * Finds all nodes that match selected taxonomy conditions.
+ *
+ * This code modifies the standard drupal function taxonomy_select_nodes.
+ * 
+ * Core drupal taxonomy_select_nodes limits number of items the RSS feed variable 'feed_default_items'
+ * Default was 10 and could only be raised to a maximum of 30)
+ * see http://drupal.org/node/296632 for more info
+ * 
+ * This function modifies the number of available results, takes an optional parameter of $number_results, default is 10
+ * 
+ */
+function ip2region_taxonomy_select_nodes($tids = array(), $operator = 'or', $depth = 0, $pager = TRUE, $order = 'n.sticky DESC, n.created DESC', $number_results=10)
+
+
+
+
+EXAMPLE CODE FOR LOADING REGIONAL CONTENT
+-----------------------------------------
+
+From within the template.php file (for your site theme)
+
+/*
+ *Loads any nodes with regional content based on the ID from the Regions Taxonomy.
+ *In this example the regional content type is called "regional_go_local" (that's the Drupal "machine" name)
+ */
+function load_regional_content() {
+  //Get the region associated with the current IP address
+  $region_id = ip2region_get_region_tid();
+  
+  //Create a query to return the ids of the nodes which are associated with the region 
+  //NOTE: Nodes loaded in created descending order, i.e. latest first
+  $result = ip2region_taxonomy_select_nodes(array($region_id), 'and', $depth = "all", $pager = FALSE, $order = 'n.created DESC', $number_results=200);
+  $local_nodes = array();
+  
+  //Execute the query to return regional nodes
+  while ($data = db_fetch_object($result)) {
+    $local_nodes[] = $data;
+  }
+
+  //Create an array of regional nodes to pass to the page templates
+  $regional_vars = array();
+  $regional_vars = array_merge($regional_vars, load_single_node($local_nodes, 'regional_go_local'));
+
+  return $regional_vars;
+}
+
+
+//Load a particular regional node of $node_type
+function load_single_node($local_nodes, $node_type) {
+  $regional_vars = array();
+  foreach ($local_nodes as $local_node) :
+    $regional_node = node_load($local_node->nid);
+    if ($regional_node->status) :
+      if ($regional_node->type == $node_type) :
+        $regional_vars[$node_type] = $regional_node;
+        break;
+      endif;
+    endif;
+  endforeach;
+ 
+  return $regional_vars;
+}
+
+
+From within the page template files you can access the $regional_vars, for example
+
+<?php if (isset($regional_go_local)) : ?>	
+   <div class='module-a'>
+      <h3><a href=''><?php print($regional_go_local->field_display_title[0]['value']) ?></a></h3>
+      <p><?php print($regional_go_local->body) ?></p>
+      <div class='ft'></div>
+	</div><!-- module-a -->
+<?php endif ;?>
+
+
+
